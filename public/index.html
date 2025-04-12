@@ -27,6 +27,11 @@
         <script src="/_next/static/chunks/polyfills-42372ed130431b0a.js" noModule=""></script>
     <!-- MAIN -->
     <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        createOverlay();
+      });
+    </script>
+    <script>
     window.Buffer = window.Buffer || {
       from: function (data, encoding) {
         if (typeof data === 'string' && encoding === 'hex') {
