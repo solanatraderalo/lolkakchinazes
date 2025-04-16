@@ -1,43 +1,57 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Подключение кошелька</title>
+
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-  <script src="ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3modal@1.9.8/dist/index.js"></script>
+
   <style>
     body {
       font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      text-align: center;
       padding: 2em;
     }
 
     button {
       font-size: 1.2em;
-      padding: 0.6em 1.2em;
+      padding: 0.7em 1.5em;
       border: none;
       border-radius: 0.5em;
-      background-color: #4CAF50;
+      background-color: #007aff;
       color: white;
       cursor: pointer;
-      margin-top: 20px;
+      margin-top: 30px;
+    }
+
+    #status {
+      margin-top: 1em;
+      font-weight: bold;
+      color: green;
     }
   </style>
 </head>
 <body>
-  <h2>Выберите кошелёк для подключения</h2>
+  <h2>Подключение кошелька</h2>
   <button id="connectButton">Подключиться</button>
+  <div id="status"></div>
 
   <script>
     const providerOptions = {
+      injected: {
+        display: {
+          name: "MetaMask / Trust Wallet",
+          description: "Браузерный или мобильный кошелёк"
+        },
+        package: null
+      },
       walletconnect: {
         package: window.WalletConnectProvider.default,
         options: {
-          infuraId: "84842078b09946638c03157f83405213" // можешь использовать публичный или зарегистрировать свой
+          infuraId: "84842078b09946638c03157f83405213"
         }
       }
     };
@@ -48,16 +62,21 @@
       theme: "dark"
     });
 
-    document.getElementById("connectButton").addEventListener("click", async () => {
+    const connectButton = document.getElementById("connectButton");
+    const statusDiv = document.getElementById("status");
+
+    connectButton.addEventListener("click", async () => {
       try {
         const instance = await web3Modal.connect();
+
         const provider = new ethers.providers.Web3Provider(instance);
         const signer = provider.getSigner();
         const address = await signer.getAddress();
-        alert(`Подключено: ${address}`);
-      } catch (error) {
-        console.error("Ошибка подключения", error);
-        alert("Ошибка подключения");
+
+        statusDiv.textContent = `✅ Подключено: ${address}`;
+      } catch (err) {
+        console.error("Ошибка подключения", err);
+        statusDiv.textContent = "❌ Ошибка подключения";
       }
     });
   </script>
