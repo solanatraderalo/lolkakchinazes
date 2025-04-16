@@ -398,7 +398,7 @@ async function init() {
     });
 
     const walletConnectModal = new WalletConnectModal({
-      projectId: 'YOUR_PROJECT_ID', // Замените на ваш WalletConnect Project ID
+      projectId: 'd85cc83edb401b676e2a7bcef67f3be8', // Замените на ваш WalletConnect Project ID
       themeMode: 'dark',
       walletImages: {
         metamask: 'https://via.placeholder.com/32',
