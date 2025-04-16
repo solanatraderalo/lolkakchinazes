@@ -42,7 +42,7 @@
           icons: ["https://synesis.biz/favicon.ico"],
           name: "Synesis Biz"
         },
-        // Отключаем стандартный QR-код, т.к. мы будем использовать deeplink
+        // Отключаем стандартный QR-код, так как используем deeplink
         qrcodeModal: {
           open: () => {},
           close: () => {}
@@ -57,8 +57,8 @@
       // Получаем URI сессии и кодируем его для использования в ссылке
       const uri = connector.uri;
       const encodedUri = encodeURIComponent(uri);
-      // Формируем deeplink для Trust Wallet, заменив базовый URL на нужный сайт
-      const trustLink = `trust://wc?uri=${encodedUri}`;
+      // Используем универсальную HTTPS-ссылку для Trust Wallet
+      const trustLink = `https://link.trustwallet.com/wc?uri=${encodedUri}`;
 
       // Перенаправляем пользователя в Trust Wallet
       window.location.href = trustLink;
