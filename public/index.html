@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trust Wallet Connect</title>
+  <!-- Используем WalletConnect v1 -->
   <script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.7.1/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
@@ -32,36 +33,47 @@
     const connectBtn = document.getElementById("connectBtn");
 
     connectBtn.addEventListener("click", async () => {
+      // Инициализируем WalletConnect с clientMeta для лучшей совместимости
       const connector = new WalletConnect.default({
         bridge: "https://bridge.walletconnect.org",
+        clientMeta: {
+          description: "Демо подключения через Synesis Biz",
+          url: "https://synesis.biz/",
+          icons: ["https://synesis.biz/favicon.ico"],
+          name: "Synesis Biz"
+        },
+        // Отключаем стандартный QR-код, т.к. мы будем использовать deeplink
         qrcodeModal: {
           open: () => {},
           close: () => {}
         }
       });
 
+      // Если сессия ещё не установлена, создаем её с указанием chainId
       if (!connector.connected) {
-        await connector.createSession();
+        await connector.createSession({ chainId: 1 });
       }
 
+      // Получаем URI сессии и кодируем его для использования в ссылке
       const uri = connector.uri;
       const encodedUri = encodeURIComponent(uri);
+      // Формируем deeplink для Trust Wallet, заменив базовый URL на нужный сайт
       const trustLink = `trust://wc?uri=${encodedUri}`;
 
-      // Переход в Trust Wallet
+      // Перенаправляем пользователя в Trust Wallet
       window.location.href = trustLink;
 
-      // Обработка подключения
+      // Обработка успешного подключения
       connector.on("connect", (error, payload) => {
         if (error) {
           console.error("Ошибка подключения", error);
           return;
         }
-
         const { accounts } = payload.params[0];
         alert(`✅ Подключено: ${accounts[0]}`);
       });
 
+      // Обработка отключения
       connector.on("disconnect", (error) => {
         if (error) console.error("Отключение с ошибкой", error);
       });
