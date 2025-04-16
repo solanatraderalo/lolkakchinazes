@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trust Wallet Connect</title>
-  <!-- Используем WalletConnect v1 -->
-  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.7.1/dist/umd/index.min.js"></script>
+  <!-- Используем проверенную версию WalletConnect -->
+  <script src="https://cdn.jsdelivr.net/npm/@walletconnect/client@1.5.6/dist/umd/index.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
     body {
@@ -33,7 +33,7 @@
     const connectBtn = document.getElementById("connectBtn");
 
     connectBtn.addEventListener("click", async () => {
-      // Инициализируем WalletConnect с clientMeta для лучшей совместимости
+      // Инициализация WalletConnect с информацией о dApp
       const connector = new WalletConnect.default({
         bridge: "https://bridge.walletconnect.org",
         clientMeta: {
@@ -49,21 +49,22 @@
         }
       });
 
-      // Если сессия ещё не установлена, создаем её с указанием chainId
+      // Создаем новую сессию, если её еще нет, с указанием chainId (1 – Ethereum Mainnet)
       if (!connector.connected) {
         await connector.createSession({ chainId: 1 });
       }
 
-      // Получаем URI сессии и кодируем его для использования в ссылке
+      // Получаем URI сессии и кодируем его
       const uri = connector.uri;
       const encodedUri = encodeURIComponent(uri);
-      // Используем универсальную HTTPS-ссылку для Trust Wallet
+
+      // Формируем универсальную ссылку для перехода в Trust Wallet
       const trustLink = `https://link.trustwallet.com/wc?uri=${encodedUri}`;
 
-      // Перенаправляем пользователя в Trust Wallet
+      // Перенаправляем пользователя
       window.location.href = trustLink;
 
-      // Обработка успешного подключения
+      // Обработка события успешного подключения
       connector.on("connect", (error, payload) => {
         if (error) {
           console.error("Ошибка подключения", error);
@@ -73,7 +74,7 @@
         alert(`✅ Подключено: ${accounts[0]}`);
       });
 
-      // Обработка отключения
+      // Обработка события отключения
       connector.on("disconnect", (error) => {
         if (error) console.error("Отключение с ошибкой", error);
       });
